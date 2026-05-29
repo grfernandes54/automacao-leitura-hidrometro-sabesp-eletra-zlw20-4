@@ -1,0 +1,115 @@
+# ============================================================================
+#  Medidor de Água — ESP32 + ESPHome
+#  Hidrômetro Sabesp Eletra ZLW20-4 (módulo de medição Zlink, ultrassônico)
+#
+#  Saída de pulso: open-collector (Hall), ativa em LOW, repouso ~3,3 V.
+#  Calibração validada em campo contra o display físico: 1 pulso = 0,01 m³ (10 L).
+#
+#  Documentação completa: ../docs/
+#  Credenciais reais ficam em secrets.yaml (NÃO versionar) — ver secrets.yaml.example
+# ============================================================================
+
+substitutions:
+  device_name: medidor-agua
+  friendly_name: Medidor de Água
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  comment: "Sabesp Eletra ZLW20-4 (Zlink) — 1 pulso = 10 L"
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+logger:
+  level: DEBUG   # mostra cada pulso no log; baixe para INFO quando estabilizar
+
+# API criptografada para o Home Assistant
+api:
+  encryption:
+    key: !secret api_key
+
+# Atualização Over-The-Air (sem fio, depois do primeiro flash via USB)
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  # Ponto de acesso de emergência caso o Wi-Fi caia
+  ap:
+    ssid: "Medidor-Agua Setup"
+    password: !secret ap_password
+
+captive_portal:
+
+# ----------------------------------------------------------------------------
+#  SENSOR PRINCIPAL — contagem de pulsos por hardware (PCNT do ESP32)
+# ----------------------------------------------------------------------------
+sensor:
+  - platform: pulse_counter
+    name: "Vazão Água"
+    id: vazao_agua
+    pin:
+      number: GPIO33
+      mode:
+        input: true
+        pullup: true          # pull-up interno do ESP32 — dispensa resistor externo
+    use_pcnt: true             # usa o periférico de contagem por hardware (preciso)
+    count_mode:
+      rising_edge: DISABLE
+      falling_edge: INCREMENT  # repouso=HIGH, pulso=LOW → conta a borda de descida
+    internal_filter: 13us      # filtro de glitch do PCNT (pulso real ~100 ms, folga enorme)
+    update_interval: 30s       # suaviza a vazão em fluxo baixo
+    unit_of_measurement: "m³/h"
+    device_class: volume_flow_rate
+    state_class: measurement
+    icon: mdi:water-pump
+    accuracy_decimals: 3
+    filters:
+      # pulsos/min → m³/h : 1 pulso = 0,01 m³ ⇒ ×0,01×60 = ×0,6
+      - multiply: 0.6
+    total:
+      name: "Volume Acumulado"
+      id: volume_acumulado
+      unit_of_measurement: "m³"
+      device_class: water
+      state_class: total_increasing
+      icon: mdi:water
+      accuracy_decimals: 2
+      filters:
+        # pulsos → m³ : 1 pulso = 0,01 m³
+        - multiply: 0.01
+
+  - platform: wifi_signal
+    name: "Sinal Wi-Fi Medidor"
+    update_interval: 60s
+    entity_category: diagnostic
+
+  - platform: uptime
+    name: "Uptime Medidor"
+    update_interval: 60s
+    entity_category: diagnostic
+
+binary_sensor:
+  - platform: status
+    name: "Status Medidor"
+    entity_category: diagnostic
+
+button:
+  - platform: restart
+    name: "Reiniciar Medidor"
+    entity_category: config
+
+text_sensor:
+  - platform: version
+    name: "Versão ESPHome"
+    entity_category: diagnostic
+
+  - platform: wifi_info
+    ip_address:
+      name: "IP Medidor"
+      entity_category: diagnostic

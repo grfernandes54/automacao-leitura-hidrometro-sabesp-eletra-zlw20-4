@@ -1,0 +1,34 @@
+# ============================================================================
+#  Utility Meter — Home Assistant
+#
+#  POR QUE ISSO É NECESSÁRIO?
+#  O "Volume Acumulado" do pulse_counter vive na RAM do ESP32 e ZERA a cada
+#  reboot (queda de energia, OTA, etc.). O utility_meter do Home Assistant
+#  guarda o acumulado de forma persistente e gera os ciclos diário/mensal
+#  usados no Energy dashboard.
+#
+#  COMO USAR:
+#  1. Cole o bloco abaixo no seu configuration.yaml (ou em um pacote/arquivo
+#     incluído por ele).
+#  2. Confirme que a entidade-fonte abaixo bate com a do seu ESPHome.
+#     Por padrão ela se chama: sensor.medidor_agua_volume_acumulado
+#     (Configurações → Dispositivos → Medidor de Água, veja o nome exato).
+#  3. Reinicie o Home Assistant.
+#  4. Vá em Configurações → Painéis → Energia → "Consumo de água" e adicione
+#     o sensor mensal (sensor.consumo_agua_mensal).
+#
+#  Também é possível criar o utility_meter pela interface gráfica
+#  (Configurações → Dispositivos e Serviços → Ajudantes → Criar ajudante →
+#   Medidor de consumo) — foi assim que o autor fez, ver docs/imgs.
+# ============================================================================
+
+utility_meter:
+  consumo_agua_diario:
+    source: sensor.medidor_agua_volume_acumulado
+    name: "Consumo de Água Diário"
+    cycle: daily
+
+  consumo_agua_mensal:
+    source: sensor.medidor_agua_volume_acumulado
+    name: "Consumo de Água Mensal"
+    cycle: monthly

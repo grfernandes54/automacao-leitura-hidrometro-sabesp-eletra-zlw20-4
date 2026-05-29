@@ -1,0 +1,14 @@
+# ESPHome secrets — NUNCA versionar credenciais reais
+secrets.yaml
+esphome/secrets.yaml
+
+# Firmware compilado e artefatos de build do ESPHome
+*.bin
+.esphome/
+build/
+
+# Caches e temporários
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db
